@@ -1,12 +1,11 @@
 package com.css.handlers.police;
 
 import com.css.annotation.Path;
+import com.css.callback.NationalQueryCall;
 import com.css.common.BaseHandler;
 import com.css.model.ClientInfo;
 import com.css.model.Response;
 import com.css.model.Result;
-import com.css.police.RequestServiceServiceLocator;
-import com.css.police.RequestServiceSoapBindingStub;
 import com.css.utils.*;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
@@ -17,6 +16,7 @@ import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.web.RoutingContext;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.*;
 
 /**
  * 全国接口
@@ -25,11 +25,7 @@ import java.util.List;
 @Path(value="/police/national", type = "get", handler= NationalServiceHandler.class)
 public class NationalServiceHandler extends BaseHandler{
 
-    private String username = "wbdw_jyj";
-
-    private String password = "wbdw_jyj";
-
-    private String serviceCode = "500100000000_00_0000000190-2142";
+    ExecutorService executor = Executors.newFixedThreadPool(30);
 
     public NationalServiceHandler(Vertx vertx, SQLClient sqlClient) {
         super(vertx, sqlClient);
@@ -42,7 +38,7 @@ public class NationalServiceHandler extends BaseHandler{
         response.putHeader("content-type","application/json;charset=UTF-8");
         String sfzh = request.getParam("sfzh");
         String clientInfo = request.getParam("clientInfo");
-        String clientStrXml = null;
+        String clientStrXml = "";
         ClientInfo client = null;
         if(clientInfo == null || "".equals(clientInfo)){
             clientStrXml = getClientInfo("wbdw_jyj","重庆市监狱管理局","1","5000","10.20.208.100");
@@ -51,14 +47,23 @@ public class NationalServiceHandler extends BaseHandler{
             clientStrXml = getClientInfo("wbdw_jyj", client.getUsername(), client.getUserid(), client.getDb(), client.getIp());
         }
 
-
         String condition = getCondition(sfzh);
         String requiredItems = getRequiredItems();
         ResultJson JSON = new ResultJson();
         try {
-            RequestServiceServiceLocator locator = new RequestServiceServiceLocator();
-            RequestServiceSoapBindingStub stub = (RequestServiceSoapBindingStub) locator.getRequestService();
-            String xml = stub.czrkQuery(username, Md5Utils.MD5(password), serviceCode, condition, requiredItems, clientStrXml);
+            NationalQueryCall query = new NationalQueryCall(condition, requiredItems, clientStrXml);
+            FutureTask<String> task = new FutureTask<String>(query);
+            executor.execute(task);
+            String xml = "";
+
+            try{
+               xml = task.get(15000, TimeUnit.MILLISECONDS);
+            }catch (TimeoutException e){
+                JSON.setStatus(false).setMessage("查询超时,可能是身份证号代码错误！");
+                response.end(JsonUtils.toJson(JSON));
+                return;
+            }
+
             if(clientInfo != null) {
                 insertLogs(client, sfzh, xml); //插入查询日志
             }
