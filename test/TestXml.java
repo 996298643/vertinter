@@ -1,5 +1,21 @@
-import com.css.model.Response;
+import com.css.model.car.Result;
+import com.css.model.car.ResultList;
+import com.css.model.person.Response;
 import com.css.utils.JabxUtils;
+import com.css.utils.JsonUtils;
+import com.css.utils.XmlParseUtilt;
+import org.dom4j.Document;
+import org.dom4j.DocumentHelper;
+import org.dom4j.Element;
+import org.dom4j.tree.DefaultElement;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class TestXml {
     public static String getXml(){
@@ -450,9 +466,59 @@ public class TestXml {
         return xml;
     }
 
-    public static void main(String[] args){
-        Response response = JabxUtils.xml2Object(getXml(), Response.class);
+    public static String getXml2(){
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                "<response><head><username>wbdw_sfj</username><password>92fb30cebc9073408e2a4263428a91d1</password><serviceCode>500100000000_01_0000000230-2161</serviceCode><condition><item><HPHM>渝AAK370</HPHM></item></condition><requiredItems><item><CLLX></CLLX><XM></XM><ZZL></ZZL><CLXH></CLXH><CCDJRQ></CCDJRQ><YXQZ></YXQZ><HPHM></HPHM><ZSXXDZ></ZSXXDZ></item></requiredItems><clientInfo><loginName>wbdw_jyj</loginName><userName>重庆市监狱管理局</userName><userCardId>1</userCardId><userDept>5000</userDept><ip>10.20.208.100</ip></clientInfo></head>" +
+                "<body><message>查询成功</message><resultCode>00</resultCode><resultList><result><XM>殷亮明</XM><CLLX>普通二轮摩托车</CLLX><CCDJRQ>2010-12-16</CCDJRQ><CLXH>XD125-5</CLXH><HPHM>渝AAK370</HPHM><ZZL>255</ZZL><YXQZ>2015-12-31</YXQZ><ZSXXDZ>重庆市巫山县培石乡黄龙村2组21号</ZSXXDZ></result><result><XM>宋宏良</XM><CLLX>小型轿车</CLLX><CCDJRQ>2010-06-03</CCDJRQ><CLXH>SMA7158B4</CLXH><HPHM>渝AAK370</HPHM><ZZL>1650</ZZL><YXQZ>2016-06-30</YXQZ><ZSXXDZ>重庆市巴南区南泉街道白鹤村10组</ZSXXDZ></result></resultList></body></response>";
+        return xml;
+    }
 
-        System.out.println(response.getBody().getResultCode());
+    public static void main(String[] args){
+        String xml = getXml2();
+
+        Pattern p = Pattern.compile("<resultList>(.*)</resultList>");
+
+        Matcher matcher = p.matcher(xml);
+        matcher.find();
+        System.out.println(matcher.group(1));
+
+        String resultStr = "<resultList>"+matcher.group(1)+"</resultList>";
+
+        List<Result> lists = null;
+        try {
+            lists = (List<Result>)parseXml2List(resultStr, Result.class);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+
+            for (Result result : lists) {
+                System.out.println(result.getCLLX());
+            }
+    }
+
+    public static List<?> parseXml2List(String xml, Class<? extends Result> cls)
+            throws Exception {
+        List<Result> lists = new ArrayList<Result>();
+        Document doc = DocumentHelper.parseText(xml);
+        Element et = doc.getRootElement();
+        String root = et.getName();
+        List<Element> list = doc.selectNodes("//" + root + "/result");
+        if (!list.isEmpty() && list.size() > 0) {
+            for(int i = 0; i < list.size() ; i++) {
+                Element element = list.get(i);
+                List elems = element.elements();
+
+                Class<? extends Result> newclz = Result.class;
+                Result result = newclz.newInstance();
+                for(Object s : elems){
+                    DefaultElement e = (DefaultElement)s;
+                    Method method = newclz.getMethod("set"+e.getName(), String.class);
+                    method.invoke(result,e.getText());
+                }
+                lists.add(result);
+            }
+        }
+        return lists;
     }
 }

@@ -2,11 +2,10 @@ package com.css.handlers.police;
 
 import com.css.annotation.Path;
 import com.css.callback.LocalQueryCall;
-import com.css.callback.NationalQueryCall;
 import com.css.common.BaseHandler;
-import com.css.model.ClientInfo;
-import com.css.model.Response;
-import com.css.model.Result;
+import com.css.model.person.ClientInfo;
+import com.css.model.person.Response;
+import com.css.model.person.Result;
 import com.css.utils.*;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
@@ -135,6 +134,7 @@ public class LocalServiceHandler extends BaseHandler {
                                 updateParams.add("2");
                                 String updateSql = "UPDATE ZL_POLICE_USER SET ZJHM = ?, XM = ?, CYM = ?, XB = ?, MZ = ?, CSRQ= ?, HKXZ = ?, HKSZDXZQH = ?, HKSZDXZ = ?, FZRQ = ?, YXQX = ?, ZP = ?"
                                                   +" WHERE ZJHM = ? AND LB = ?";
+                                updateParam(updateSql, updateParams);
                             }
                         }
                     });
